@@ -1,2 +1,3 @@
 override/
-docker-compose.override.yml
+/docker-compose.override.yml
+/.env
