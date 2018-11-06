@@ -17,6 +17,9 @@ A docker compose configuration for [Kong](https://konghq.com/kong-community-edit
 
 ## Install
 
-- Rename `.env.dist` to `.env` and customize subdomains with your own domain.
+- Rename `.env.dist` to `.env` and customize subdomains with your own domain. *(You may use multiple domains on the same container separated by a comma)*
 - Run `docker-compose up -d`.
 - Point your browser on `http://` of domains configured in `.env` file.
+- Configure Kong as usual to declare services by using the name of services declared in `docker-compose.override.yml` file as upstream. 
+
+*You should always configure http protocol inside Kong as the https layer is handled externaly by `nginx-proxy` and `docker-letsencrypt-nginx-proxy-companion` containers*
