@@ -2,7 +2,7 @@ Kong Docker Composer
 ====================
 
 A docker compose configuration for [Kong](https://konghq.com/kong-community-edition/), 
-[Kong Dashboard]() and [nginx-proxy](https://github.com/jwilder/nginx-proxy)
+[Kong Dashboard](https://github.com/PGBI/kong-dashboard) and [nginx-proxy](https://github.com/jwilder/nginx-proxy)
 
 ## Features
 
