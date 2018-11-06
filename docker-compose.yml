@@ -62,7 +62,7 @@ services:
     restart: unless-stopped
   kong-dashboard:
     image: pgbi/kong-dashboard:v3.5.0
-    command: start --kong-url http://kong:8001
+    command: start --kong-url http://kong:8001 --basic-auth ${KONG_DASHBOARD_BASIC_AUTH}
     environment:
       - VIRTUAL_HOST=${KONG_DASHBOARD_VIRTUAL_HOST}
       - LETSENCRYPT_HOST=${KONG_DASHBOARD_VIRTUAL_HOST}
