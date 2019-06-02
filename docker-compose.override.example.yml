@@ -4,5 +4,5 @@ services:
     image: guessit/guessit-rest
     networks:
       - default
-      - nginx-proxy
+      - reverse-proxy
     restart: unless-stopped
