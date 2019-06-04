@@ -5,4 +5,4 @@ services:
     networks:
       - default
       - reverse-proxy
-    restart: unless-stopped
+    restart: ${KONG_RESTART_POLICY:-unless-stopped}
