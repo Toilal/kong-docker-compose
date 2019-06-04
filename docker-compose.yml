@@ -15,8 +15,6 @@ services:
       interval: 30s
       timeout: 30s
       retries: 3
-    stdin_open: true
-    tty: true
     volumes:
       - db-data:/var/lib/postgresql/data
     restart: ${KONG_RESTART_POLICY:-unless-stopped}
@@ -41,6 +39,7 @@ services:
       KONG_ADMIN_ACCESS_LOG: /dev/stdout
       KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_ADMIN_LISTEN: '0.0.0.0:8001'
+      KONG_SSL: 'off'
       KONG_CASSANDRA_CONTACT_POINTS: db
       KONG_DATABASE: postgres
       KONG_PG_DATABASE: ${KONG_PG_DATABASE:-kong}
@@ -49,37 +48,65 @@ services:
       KONG_PG_USER: ${KONG_PG_USER:-kong}
       KONG_PROXY_ACCESS_LOG: /dev/stdout
       KONG_PROXY_ERROR_LOG: /dev/stderr
-    restart: ${KONG_RESTART_POLICY:-unless-stopped}
-  nginx:
-    image: nginx:1.15-alpine
-    environment:
-      - VIRTUAL_HOST=${KONG_VIRTUAL_HOST}
-      - VIRTUAL_PORT=80
-      - LETSENCRYPT_HOST=${KONG_VIRTUAL_HOST}
+      VIRTUAL_HOST: ${KONG_VIRTUAL_HOST}
+      VIRTUAL_PORT: 8000
+      LETSENCRYPT_HOST: ${KONG_VIRTUAL_HOST}
     labels:
-      - traefik.enable=true
+      - 'traefik.enable=true'
       - 'traefik.frontend.rule=Host:${KONG_VIRTUAL_HOST}'
-      - traefik.port=80
-    volumes:
-      - ./nginx-kong.conf:/etc/nginx/conf.d/default.conf:ro
+      - 'traefik.port=8000'
+    ports:
+      - 8000:8000
+      - 8001:8001
     networks:
       - default
       - reverse-proxy
     restart: ${KONG_RESTART_POLICY:-unless-stopped}
-  dashboard:
-    image: pgbi/kong-dashboard:latest
-    command: start --kong-url http://kong:8001 --basic-auth ${KONG_DASHBOARD_BASIC_AUTH}
+  db-konga:
+    image: postgres:11.3
     environment:
-      - VIRTUAL_HOST=${KONG_DASHBOARD_VIRTUAL_HOST}
-      - VIRTUAL_PORT=8080
-      - LETSENCRYPT_HOST=${KONG_DASHBOARD_VIRTUAL_HOST}
+      POSTGRES_DB: ${KONGA_PG_DATABASE:-konga}
+      POSTGRES_PASSWORD: ${KONGA_PG_PASSWORD:-konga}
+      POSTGRES_USER: ${KONGA_PG_USER:-konga}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${KONG_PG_USER:-kong}"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    volumes:
+      - db-konga-data:/var/lib/postgresql/data
+    restart: ${KONG_RESTART_POLICY:-unless-stopped}
+  konga-prepare:
+    image: pantsel/konga:0.14.1
+    command: -c prepare -a postgres -u postgresql://${KONGA_PG_USER:-konga}:${KONGA_PG_PASSWORD:-konga}@db-konga/${KONGA_PG_DATABASE:-konga}
+    depends_on:
+      - db-konga
+    restart: on-failure
+  konga:
+    image: pantsel/konga:0.14.1
+    depends_on:
+      - db-konga
+    environment:
+      - VIRTUAL_HOST=${KONGA_VIRTUAL_HOST}
+      - VIRTUAL_PORT=1337
+      - LETSENCRYPT_HOST=${KONGA_VIRTUAL_HOST}
+      - NODE_ENV=production
+      - TOKEN_SECRET=${KONGA_TOKEN_SECRET}
+      - DB_ADAPTER=postgres
+      - DB_URI=postgresql://${KONGA_PG_USER:-konga}:${KONGA_PG_PASSWORD:-konga}@db-konga/${KONGA_PG_DATABASE:-konga}
+      - KONGA_SEED_USER_DATA_SOURCE_FILE=/konga.users.js
+      - KONGA_SEED_KONG_NODE_DATA_SOURCE_FILE=/konga.nodes.js
     labels:
-      - traefik.enable=true
-      - 'traefik.frontend.rule=Host:${KONG_DASHBOARD_VIRTUAL_HOST}'
-      - traefik.port=8080
+      - 'traefik.enable=true'
+      - 'traefik.frontend.rule=Host:${KONGA_VIRTUAL_HOST}'
+      - 'traefik.port=1337'
+    volumes:
+      - './konga.users.js:/konga.users.js:ro'
+      - './konga.nodes.js:/konga.nodes.js:ro'
     networks:
       - default
       - reverse-proxy
     restart: ${KONG_RESTART_POLICY:-unless-stopped}
 volumes:
   db-data: ~
+  db-konga-data: ~
